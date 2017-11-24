@@ -14,6 +14,8 @@
  */
 package com.amazonaws.codepipeline.jenkinsplugin;
 
+import hudson.FilePath;
+import hudson.util.DirScanner;
 import hudson.model.BuildListener;
 import hudson.util.IOUtils;
 
@@ -85,7 +87,7 @@ public final class CompressionTools {
 
         return compressedArtifacts;
     }
-
+    /*
     public static void compressZipFile(
             final File temporaryZipFile,
             final Path pathToCompress,
@@ -95,13 +97,38 @@ public final class CompressionTools {
                      new ZipArchiveOutputStream(
                      new BufferedOutputStream(
                      new FileOutputStream(temporaryZipFile)))) {
-
+            
             compressArchive(
                     pathToCompress,
                     zipArchiveOutputStream,
                     new ArchiveEntryFactory(CompressionType.Zip),
                     CompressionType.Zip,
                     listener);
+        }
+    }
+    */
+    public static void compressZipFile(
+            final File temporaryZipFile,
+            final Path pathToCompress,
+            final BuildListener listener)
+            throws IOException {
+        try (
+            final FileOutputStream zipArchiveOutputStream = new FileOutputStream(temporaryZipFile);
+        ) {
+
+            final FilePath sourceDirectory = new FilePath(pathToCompress.toFile());
+            try {
+                sourceDirectory.zip(
+                    zipArchiveOutputStream,
+                    new DirScanner.Glob("", "")
+                );
+            } catch(InterruptedException e) {
+                LoggingHelper.log(listener, "Error creating zip file: '%s'", e.toString());
+                throw new IOException(e.toString());
+            } finally {
+                zipArchiveOutputStream.close();
+            }
+
         }
     }
 
@@ -115,6 +142,7 @@ public final class CompressionTools {
                      new BufferedOutputStream(
                      new FileOutputStream(temporaryTarFile)))) {
 
+            tarArchiveOutputStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU);
             compressArchive(
                     pathToCompress,
                     tarArchiveOutputStream,
@@ -135,6 +163,7 @@ public final class CompressionTools {
                 new GzipCompressorOutputStream(
                 new FileOutputStream(temporaryTarGzFile))))) {
 
+            tarGzArchiveOutputStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU);
             compressArchive(
                     pathToCompress,
                     tarGzArchiveOutputStream,
